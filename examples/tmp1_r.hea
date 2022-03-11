@@ -1,14 +1,14 @@
-tmp1_r 12 500 3600     0:01
-tmp1_r.dat 16 200/mV 16 0 -2 -1286 0 I
-tmp1_r.dat 16 200/mV 16 0 0 -25076 0 II
-tmp1_r.dat 16 200/mV 16 0 0 24976 0 III
-tmp1_r.dat 16 200/mV 16 0 0 27971 0 aVR
-tmp1_r.dat 16 200/mV 16 0 0 -11527 0 aVF
-tmp1_r.dat 16 200/mV 16 0 -1 -12773 0 aVL
-tmp1_r.dat 16 200/mV 16 0 -1 -29733 0 V1
-tmp1_r.dat 16 200/mV 16 0 0 854 0 V2
-tmp1_r.dat 16 200/mV 16 0 0 -32725 0 V3
-tmp1_r.dat 16 200/mV 16 0 -2 30785 0 V4
-tmp1_r.dat 16 200/mV 16 0 -1 -11412 0 V5
-tmp1_r.dat 16 200/mV 16 0 0 18323 0 V6
+tmp1_r 12 500 4999     0:01
+tmp1_r.dat 16 200/mV 16 0 -2 -5917 0 I
+tmp1_r.dat 16 200/mV 16 0 0 -5469 0 II
+tmp1_r.dat 16 200/mV 16 0 0 8721 0 III
+tmp1_r.dat 16 200/mV 16 0 0 18791 0 aVR
+tmp1_r.dat 16 200/mV 16 0 0 30070 0 aVF
+tmp1_r.dat 16 200/mV 16 0 -1 -15384 0 aVL
+tmp1_r.dat 16 200/mV 16 0 -1 2013 0 V1
+tmp1_r.dat 16 200/mV 16 0 0 -25037 0 V2
+tmp1_r.dat 16 200/mV 16 0 0 23093 0 V3
+tmp1_r.dat 16 200/mV 16 0 -2 -8398 0 V4
+tmp1_r.dat 16 200/mV 16 0 -1 30169 0 V5
+tmp1_r.dat 16 200/mV 16 0 0 -11665 0 V6
 #<age>: 0 <sex>: F
