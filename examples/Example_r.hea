@@ -1,0 +1,14 @@
+Example_r 12 500 3600     0:01
+Example_r.dat 16 200/mV 16 0 3 12799 0 I
+Example_r.dat 16 200/mV 16 0 -1 -26565 0 II
+Example_r.dat 16 200/mV 16 0 2 -3171 0 III
+Example_r.dat 16 200/mV 16 0 0 17613 0 aVR
+Example_r.dat 16 200/mV 16 0 0 8275 0 aVF
+Example_r.dat 16 200/mV 16 0 -1 -18973 0 aVL
+Example_r.dat 16 200/mV 16 0 0 21815 0 V1
+Example_r.dat 16 200/mV 16 0 -1 -13291 0 V2
+Example_r.dat 16 200/mV 16 0 -4 -18183 0 V3
+Example_r.dat 16 200/mV 16 0 0 11272 0 V4
+Example_r.dat 16 200/mV 16 0 0 24864 0 V5
+Example_r.dat 16 200/mV 16 0 1 23600 0 V6
+#<age>: 0 <sex>: F

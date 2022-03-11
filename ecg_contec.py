@@ -32,8 +32,8 @@ SEX_LABELS = {SEX_FEMALE: 'F', SEX_MALE: 'M', SEX_UNKNOWN: 'Unknown'}
 NULL_VALUE = 0x6800
 # Sampling parameters for the Contec ECG90A device.
 ECG90A_SAMPLE_BITS = 16
-ECG90A_DATA_SERIES = 8
 ECG90A_SAMPLE_RATE = 800
+ECG90A_DATA_SERIES = 8
 ECG90A_AMPL_NANOVOLT = 5000
 ECG90A_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 # Shift the X axis by this value, to make it zero-centered.
@@ -42,16 +42,16 @@ ECG90A_XOFFSET = -2048
 ECG90A_LEADS = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
 # Mapping from ECG90A to SCP-ECG definitions.
 ECG90A_LEADS_SCP = {
-    0:  scp.LEAD_I,
-    1:  scp.LEAD_II,
-    2:  scp.LEAD_III,
-    3:  scp.LEAD_AVR,
-    4:  scp.LEAD_AVL,
-    5:  scp.LEAD_AVF,
-    6:  scp.LEAD_V1,
-    7:  scp.LEAD_V2,
-    8:  scp.LEAD_V3,
-    9:  scp.LEAD_V4,
+    0: scp.LEAD_I,
+    1: scp.LEAD_II,
+    2: scp.LEAD_III,
+    3: scp.LEAD_AVR,
+    4: scp.LEAD_AVL,
+    5: scp.LEAD_AVF,
+    6: scp.LEAD_V1,
+    7: scp.LEAD_V2,
+    8: scp.LEAD_V3,
+    9: scp.LEAD_V4,
     10: scp.LEAD_V5,
     11: scp.LEAD_V6
 }
@@ -59,19 +59,31 @@ ECG90A_LEADS_SCP = {
 # How many columns to include into CSV exported files.
 DEFAULT_CSV_COLUMNS = len(ECG90A_LEADS)
 
+
 class ecg():
 
-    def __init__(self, filename, sample_rate=ECG90A_SAMPLE_RATE, data_series=ECG90A_DATA_SERIES, sample_bits=ECG90A_SAMPLE_BITS):
+    def __init__(self, filename,
+                 sample_rate=ECG90A_SAMPLE_RATE,
+                 data_series=ECG90A_DATA_SERIES,
+                 sample_bits=ECG90A_SAMPLE_BITS):
+
+        # log
         logging.basicConfig(format='%(levelname)s: ecg_contec: %(message)s', level=logging.DEBUG)
+
         self.err = 0
+
+        # log: exam filename
         if not os.path.exists(filename):
             logging.error(u'Input file %s does not exists' % (filename,))
             self.err |= 0b00000001
             return None
+
+        # log: exam sample_bits
         if (sample_bits % 8) != 0:
             logging.error(u'sample_bits is not multiple of 8')
             self.err |= 0b00000011
             return None
+
         self.filename = filename
         self.sample_rate = sample_rate
         self.data_series = data_series
@@ -82,12 +94,16 @@ class ecg():
         self.payload_len = self.file_size - HEADER_LEN - FOOTER_LEN
         bytes_per_sample = self.data_series * int(self.sample_bits / 8)
         if (self.payload_len % bytes_per_sample) != 0:
-            logging.error(u'File size mismatch: (%d - %d - %d) = %d is not multiple of %d' % (self.file_size, HEADER_LEN, FOOTER_LEN, self.payload_len, bytes_per_sample))
+            logging.error(u'File size mismatch: (%d - %d - %d) = %d is not multiple of %d' % (
+                self.file_size, HEADER_LEN, FOOTER_LEN, self.payload_len, bytes_per_sample))
             self.err |= 0b00000010
             return None
+
+        # n_samples
         self.samples = int(self.payload_len / bytes_per_sample)
         self.duration = float(self.samples / self.sample_rate)
-        # Read and parse the file header.
+
+        # Read and parse the patient information from file header.
         try:
             with open(filename, 'rb') as f:
                 self.case = self.asciiz(f.read(8))
@@ -114,10 +130,8 @@ class ecg():
             self.err |= 0b01000000
             self.timestamp = ts
 
-
     def asciiz(self, byte_str):
         return byte_str.decode('utf-8').split('\0', 1)[0]
-
 
     def readline(self, xoffset=ECG90A_XOFFSET, cols=DEFAULT_CSV_COLUMNS):
         """ Iterate data one row (list of values) at a time """
@@ -145,32 +159,38 @@ class ecg():
                     # Normalize the values shifting by xoffset.
                     value += xoffset
                 row.append(value)
+
             # Should never reach the end of file: a row with all-zeros terminate the iterator.
             if data is None:
                 unused_values = len(row)
-                logging.warning(u'Unexpected EOF: rows read: %d, expected: %d, unused values: %s' % (read_rows, self.samples, unused_values))
+                logging.warning(u'Unexpected EOF: rows read: %d, expected: %d, unused values: %s' % (
+                    read_rows, self.samples, unused_values))
                 self.err |= 0b00001000
                 # Terminate the iterator.
                 break
+
             # A row with all-zeros means end of data.
             if row == [xoffset] * self.data_series:
                 if read_rows != self.samples:
-                    logging.warning(u'Unexpected end of data: found an all-zeros row, only %d read so far, expected %d' % (read_rows, self.samples))
+                    logging.warning(
+                        u'Unexpected end of data: found an all-zeros row, only %d read so far, expected %d' % (
+                            read_rows, self.samples))
                     self.err |= 0b00001100
                 # Terminate the iterator.
                 break
+
             # Assume that the first two data series are lead II and lead III,
             # so calculate I, avR, avL and avF using the Einthoven formulas.
             if self.data_series >= 2:
-                lead_ii  = row[0]
+                lead_ii = row[0]
                 lead_iii = row[1]
                 if lead_ii is not None and lead_iii is not None:
-                    lead_i   = lead_ii - lead_iii
+                    lead_i = lead_ii - lead_iii
                     lead_avr = int(lead_iii / 2) - lead_ii
-                    lead_avl = int(lead_ii  / 2) - lead_iii
+                    lead_avl = int(lead_ii / 2) - lead_iii
                     lead_avf = int((lead_ii + lead_iii) / 2)
                 else:
-                    lead_i   = None
+                    lead_i = None
                     lead_avr = None
                     lead_avl = None
                     lead_avf = None
@@ -179,8 +199,8 @@ class ecg():
             yield ecg_row[0:cols]
         f_in.close()
 
-
-    def export_csv(self, filename=None, overwrite=False, as_millivolt=False, none_as_zero=False, xoffset=ECG90A_XOFFSET, cols=DEFAULT_CSV_COLUMNS):
+    def export_csv(self, filename=None, overwrite=False, as_millivolt=False, none_as_zero=False, xoffset=ECG90A_XOFFSET,
+                   cols=DEFAULT_CSV_COLUMNS):
         """ Export ECG data into a CSV format file """
 
         if self.err != 0:
@@ -198,13 +218,15 @@ class ecg():
         with open(filename_csv, 'w') as f:
             for row in self.readline(xoffset=xoffset, cols=cols):
                 if as_millivolt:
-                    f.write(','.join(scp.csv_format(x, multiplier=amplitude_mult, none_as_zero=none_as_zero) for x in row) + '\n')
+                    f.write(','.join(
+                        scp.csv_format(x, multiplier=amplitude_mult, none_as_zero=none_as_zero) for x in row) + '\n')
                 else:
-                    f.write(','.join(scp.csv_format(x, num_format=u'%d', none_as_zero=none_as_zero) for x in row) + '\n')
+                    f.write(
+                        ','.join(scp.csv_format(x, num_format=u'%d', none_as_zero=none_as_zero) for x in row) + '\n')
         return filename_csv
 
-
-    def export_edf(self, filename=None, overwrite=False, as_millivolt=False, none_as_zero=False, xoffset=ECG90A_XOFFSET, cols=DEFAULT_CSV_COLUMNS):
+    def export_edf(self, filename=None, overwrite=False, as_millivolt=False, none_as_zero=False, xoffset=ECG90A_XOFFSET,
+                   cols=DEFAULT_CSV_COLUMNS):
         """ Export ECG data into a EDF format file """
 
         if self.err != 0:
@@ -222,7 +244,7 @@ class ecg():
         if t.year < 1985 or t.year > 2084:
             logging.warning(u'Year %d is outside the allowed EDF range %d-%d. Should use EDF+' % (t.year, 1985, 2084))
         # Prepare data for the EDF header, use some of the additional specifications in EDF+.
-        edf_header_len = 8+80+80+8+8+8+44+8+8+4+(16+80+8+8+8+8+8+80+8+32)*cols
+        edf_header_len = 8 + 80 + 80 + 8 + 8 + 8 + 44 + 8 + 8 + 4 + (16 + 80 + 8 + 8 + 8 + 8 + 8 + 80 + 8 + 32) * cols
         edf_hospital_code = ''
         if self.patient_sex == SEX_FEMALE:
             edf_sex = 'F'
@@ -245,21 +267,21 @@ class ecg():
             f.write(bytes(t.strftime('%d.%m.%y'), 'ascii'))
             f.write(bytes(t.strftime('%H.%M.%S'), 'ascii'))
             f.write(bytes('%-8d' % (edf_header_len,), 'ascii'))
-            f.write(bytes(' '*44, 'ascii'))
+            f.write(bytes(' ' * 44, 'ascii'))
             # NOTICE: Duration of data record can be a multiple of sample rate.
-            f.write(bytes('%-8d' % (self.samples,), 'ascii'))                # Data records
+            f.write(bytes('%-8d' % (self.samples,), 'ascii'))  # Data records
             f.write(bytes('%-8.6f' % (1.0 / ECG90A_SAMPLE_RATE,), 'ascii'))  # Duration of one data record
-            f.write(bytes('%-4d' % (cols,), 'ascii'))                        # Nr of signals
+            f.write(bytes('%-4d' % (cols,), 'ascii'))  # Nr of signals
             for lead in range(0, cols): f.write(bytes('%-16s' % (ECG90A_LEADS[lead],), 'ascii')[0:16])  # Lead label
-            for lead in range(0, cols): f.write(bytes(' '*80, 'ascii'))                # Transducer type
-            for lead in range(0, cols): f.write(bytes('%-8s' % ('mV',), 'ascii'))      # Physical dimension
-            for lead in range(0, cols): f.write(bytes('%-8.2f' % (-1000.0,), 'ascii')) # Physical minimum
+            for lead in range(0, cols): f.write(bytes(' ' * 80, 'ascii'))  # Transducer type
+            for lead in range(0, cols): f.write(bytes('%-8s' % ('mV',), 'ascii'))  # Physical dimension
+            for lead in range(0, cols): f.write(bytes('%-8.2f' % (-1000.0,), 'ascii'))  # Physical minimum
             for lead in range(0, cols): f.write(bytes('%-8.2f' % (1000.0,), 'ascii'))  # Physical maximum
-            for lead in range(0, cols): f.write(bytes('%-8d' % (-32768,), 'ascii'))    # Digital minimum
-            for lead in range(0, cols): f.write(bytes('%-8d' % (32767,), 'ascii'))     # Digital maximum
-            for lead in range(0, cols): f.write(bytes(' '*80, 'ascii'))                # Prefiltering
-            for lead in range(0, cols): f.write(bytes('%-8d' % (1,), 'ascii'))         # Nr of samples in each data record
-            for lead in range(0, cols): f.write(bytes(' '*32, 'ascii'))                # Reserved
+            for lead in range(0, cols): f.write(bytes('%-8d' % (-32768,), 'ascii'))  # Digital minimum
+            for lead in range(0, cols): f.write(bytes('%-8d' % (32767,), 'ascii'))  # Digital maximum
+            for lead in range(0, cols): f.write(bytes(' ' * 80, 'ascii'))  # Prefiltering
+            for lead in range(0, cols): f.write(bytes('%-8d' % (1,), 'ascii'))  # Nr of samples in each data record
+            for lead in range(0, cols): f.write(bytes(' ' * 32, 'ascii'))  # Reserved
             # DATA RECORD
             for row in self.readline(xoffset=xoffset, cols=cols):
                 for val in row:
@@ -268,13 +290,15 @@ class ecg():
                         val = 0
                     f.write(struct.pack('<h', val))
 
-
     def export_scp(self, filename=None, overwrite=False, xoffset=ECG90A_XOFFSET):
         """ Export data into a SCP-ECF file """
 
+        # log
         if self.err != 0:
             logging.warning(u'ECG file header did not parsed correctly')
             return None
+
+        # determine filename_scp
         if filename is None:
             filename_scp = self.filename + u'.scp'
         else:
@@ -285,25 +309,26 @@ class ecg():
             return None
 
         # Section pointers are required at least from #0 to #11.
+        # s: sections to parse to SCP
         s = {}
         for sect_id in range(0, 12):
             s[sect_id] = b''
 
         # Prepare Section #1 - Patient Data
-        # Patient sex.
+        # 1) Patient sex. (self.patient_sex)
         if self.patient_sex == 1:
             sex_code = scp.SEX_MALE
         elif self.patient_sex == 0:
             sex_code = scp.SEX_FEMALE
         else:
             sex_code = scp.SEX_UNKNOWN
-        # Patient weight.
+        # 2) Patient weight.(self.patient_weight)
         weight_unit = scp.WEIGHT_UNSPECIFIED if self.patient_weight == 0 else scp.WEIGHT_KILOGRAM
-        # Patient age.
+        # 3) Patient age.(self.patient_age)
         age_unit = scp.AGE_UNSPECIFIED if self.patient_age == 0 else scp.AGE_YEARS
-        # Date and time of acquisition
+        # 4) Date and time of acquisition. (self.timestamp, self.patient_name, self.patient_vase)
         t = datetime.datetime.strptime(self.timestamp, ECG90A_DATETIME_FORMAT)
-        s[1]  = scp.make_tag(scp.TAG_PATIENT_ID, scp.make_asciiz(self.patient_name))
+        s[1] = scp.make_tag(scp.TAG_PATIENT_ID, scp.make_asciiz(self.patient_name))
         s[1] += scp.make_tag(scp.TAG_ECG_SEQ_NUM, scp.make_asciiz(self.case))
         s[1] += scp.make_tag(scp.TAG_PATIENT_LAST_NAME, scp.make_asciiz(self.patient_name))
         s[1] += scp.make_tag(scp.TAG_PATIENT_SEX, struct.pack('<B', sex_code))
@@ -314,7 +339,7 @@ class ecg():
         s[1] += scp.make_tag(scp.TAG_ACQ_DEV_ID, scp.make_machine_id('ECG90A'))
         s[1] += scp.make_tag(scp.TAG_EOF, b'')
 
-        # Prepare Section #3 - ECG Lead Definition
+        # Prepare Section #3 - ECG Lead Definition (self.samples)
         leads_number = len(ECG90A_LEADS)
         flag_byte = 0b00000000
         flag_byte |= scp.ALL_SIMULTANEOUS_READ
@@ -329,7 +354,7 @@ class ecg():
             s[3] += struct.pack('<I', ending_sample)
             s[3] += struct.pack('<B', lead_id)
 
-        # Prepare Section #6 - Rhythm data
+        # Prepare Section #6 - Rhythm data (self.sample_rate, self.samples)
         amplitude_multiplier = ECG90A_AMPL_NANOVOLT
         sample_time_interval = int(1000000 / self.sample_rate)  # In microseconds
         s[6] = struct.pack('<H', amplitude_multiplier)
@@ -346,7 +371,7 @@ class ecg():
         for i in range(0, leads_number):
             s[6] += struct.pack('<H', bytes_to_store)
         all_rows = []
-        for row in self.readline(xoffset=xoffset):
+        for row in self.readline(xoffset=xoffset):  # yield one row of ecg data, len(row) == n_leads
             all_rows.append(row)
         for i in range(0, leads_number):
             count = 0
@@ -373,10 +398,12 @@ class ecg():
             if length > 0:
                 length += scp.SECTION_HEADER_LEN
             s[0] += scp.make_pointer_field(sect_id, length, index)
-            index += length 
+            index += length
 
         # Prepare SCP-ECG Record
         # CRC(2bytes) + Size(4bytes) + Section #0 + Section #1 + ...
+        # s -> scp_ecg -> crc
+        # scp_ecg = size + s
         size = scp.SCPECG_HEADER_LEN
         for sect_id in (0, 1, 2, 3, 6):
             if len(s[sect_id]) > 0:
@@ -387,7 +414,10 @@ class ecg():
                 scp_ecg += scp.pack_section(sect_id, s[sect_id])
         crc = struct.pack('<H', binascii.crc_hqx(scp_ecg, 0xffff))
 
-        f_out = open(filename_scp, 'wb')
-        f_out.write(crc + scp_ecg)
-        f_out.close()
+        # f_out = open(filename_scp, 'wb')
+        # f_out.write(crc + scp_ecg)
+        # f_out.close()
+        with open(filename_scp, "wb") as f:
+            f.write(crc + scp_ecg)
+
         return filename_scp

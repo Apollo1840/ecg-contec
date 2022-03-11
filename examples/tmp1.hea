@@ -1,0 +1,14 @@
+tmp1 12 500 4999     0:01
+tmp1.dat 16 200/mV 16 0 29 -412 0 I
+tmp1.dat 16 200/mV 16 0 11 55 0 II
+tmp1.dat 16 200/mV 16 0 -17 867 0 III
+tmp1.dat 16 200/mV 16 0 -20 182 0 aVR
+tmp1.dat 16 200/mV 16 0 -3 411 0 aVF
+tmp1.dat 16 200/mV 16 0 23 -465 0 aVL
+tmp1.dat 16 200/mV 16 0 38 -338 0 V1
+tmp1.dat 16 200/mV 16 0 136 3717 0 V2
+tmp1.dat 16 200/mV 16 0 106 403 0 V3
+tmp1.dat 16 200/mV 16 0 80 713 0 V4
+tmp1.dat 16 200/mV 16 0 38 -594 0 V5
+tmp1.dat 16 200/mV 16 0 21 133 0 V6
+#<age>: 28 <sex>: M

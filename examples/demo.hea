@@ -1,0 +1,14 @@
+demo 12 500 10001     0:24
+demo.dat 16 200/mV 16 0 0 25982 0 I
+demo.dat 16 200/mV 16 0 0 17787 0 II
+demo.dat 16 200/mV 16 0 0 -8195 0 III
+demo.dat 16 200/mV 16 0 0 -21900 0 aVR
+demo.dat 16 200/mV 16 0 0 4815 0 aVF
+demo.dat 16 200/mV 16 0 0 16993 0 aVL
+demo.dat 16 200/mV 16 0 0 3355 0 V1
+demo.dat 16 200/mV 16 0 0 -2125 0 V2
+demo.dat 16 200/mV 16 0 0 9414 0 V3
+demo.dat 16 200/mV 16 0 0 -28968 0 V4
+demo.dat 16 200/mV 16 0 0 -16030 0 V5
+demo.dat 16 200/mV 16 0 0 -16877 0 V6
+#<age>: -1 <sex>: M
