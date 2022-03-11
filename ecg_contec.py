@@ -370,10 +370,11 @@ class ecg():
             bytes_to_store = int(max_samples * (ECG90A_SAMPLE_BITS / 8))
         for i in range(0, leads_number):
             s[6] += struct.pack('<H', bytes_to_store)
+
         all_rows = []
-        for row in self.readline(xoffset=xoffset):  # yield one row of ecg data, len(row) == n_leads
+        for row in self.readline(xoffset=xoffset):  # yield one row of ecg data in int, len(row) == n_leads
             all_rows.append(row)
-        for i in range(0, leads_number):
+        for i in range(leads_number):
             count = 0
             serie = b''
             for row in all_rows:

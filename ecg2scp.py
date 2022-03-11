@@ -5,7 +5,7 @@ import binascii
 
 import ecg_scp as scp
 
-LEADS_SCP = {
+LEADS_ORDER_GENERAL = {
     0: scp.LEAD_I,
     1: scp.LEAD_II,
     2: scp.LEAD_III,
@@ -23,25 +23,39 @@ LEADS_SCP = {
 
 class ECGBasic():
 
-    def __init__(self):
-        self.n_samples = 3600
-        self.n_leads = 12
-        self.data = np.zeros((self.n_leads, self.n_samples))
-        # note: the leads order must be ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
+    def __init__(self, data=None):
+        """
+        It only support above order 12 leads ECG,
+        namely, the leads order must be ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
+
+        if you have less leads or different order, you need provide your won LEADS_ORDER_GENERAL map.
+
+        :param: data: np.array(dtype=np.int32), shape: (n_leads, n_samples), the unit is default 5000 nV
+        """
+        
+        self.data = np.zeros((self.n_leads, self.n_samples), dtype=np.int32) if data is None else data
 
         self.sample_bits = 16  # (bit), long int in C, int in Python
-        self.sample_rate = 360  # (Hz)
-        self.ampl_nanovolt = 5000  # (nV), each 1 unit means 5000 nV
+        self.sample_rate = 500  # (Hz)
+        self.ampl_nanovolt = 5000  # (nV), it means each 1 unit means 5000 nV
         # r peak is normally 0.5mV == 500uV == 100 * 5e3nV
 
         # timestamp of the ECG
         self.timestamp = datetime.datetime(year=2022, month=1, day=1, hour=1, minute=1, second=1)
         # patient information
         self.patient_name = "anonymized"
-        self.patient_case = "unknown"
+        self.patient_case = "unknown_case"
         self.patient_sex = 0  # female, or 1 for male
         self.patient_weight = 0
         self.patient_age = 0
+
+    @property
+    def n_leads(self):
+        return self.data.shape[0]
+
+    @property
+    def n_samples(self):
+        return self.data.shape[1]
 
     def export_scp(self, filename):
         """
@@ -90,7 +104,7 @@ class ECGBasic():
         s[1] += scp.make_tag(scp.TAG_PATIENT_AGE, scp.make_3bytes_intval_unit(self.patient_age, age_unit))
         s[1] += scp.make_tag(scp.TAG_DATE_ACQ, scp.make_date(self.timestamp))
         s[1] += scp.make_tag(scp.TAG_TIME_ACQ, scp.make_time(self.timestamp))
-        s[1] += scp.make_tag(scp.TAG_ACQ_DEV_ID, scp.make_machine_id('ECG90A'))
+        s[1] += scp.make_tag(scp.TAG_ACQ_DEV_ID, scp.make_machine_id('unknown_machine'))
         s[1] += scp.make_tag(scp.TAG_EOF, b'')
 
         # Prepare Section #3 - ECG Lead Definition (self.samples)
@@ -100,39 +114,33 @@ class ECGBasic():
         flag_byte |= (leads_number << 3)  # Simultaneous lead.
         s[3] = struct.pack('<B', leads_number)
         s[3] += struct.pack('<B', flag_byte)
-        for i in range(0, leads_number):
+        for i in range(leads_number):
             starting_sample = 1
             ending_sample = self.n_samples
-            lead_id = LEADS_SCP[i]
+            lead_id = LEADS_ORDER_GENERAL[i]
             s[3] += struct.pack('<I', starting_sample)
             s[3] += struct.pack('<I', ending_sample)
             s[3] += struct.pack('<B', lead_id)
 
         # Prepare Section #6 - Rhythm data (self.sample_rate, self.samples)
-        amplitude_multiplier = self.ampl_nanovolt
+        amplitude_multiplier = int(self.ampl_nanovolt)
         sample_time_interval = int(1e6 / self.sample_rate)  # (us), In microseconds
         s[6] = struct.pack('<H', amplitude_multiplier)
         s[6] += struct.pack('<H', sample_time_interval)
         s[6] += struct.pack('<B', scp.ENCODING_REAL)
         s[6] += struct.pack('<B', scp.BIMODAL_COMPRESSION_FALSE)
         # Bytes to store for each serie, limited to 16bit size counter (sic!)
-        max_samples = int(0xffff / (self.sample_bits / 8))
-        bytes_to_store = int(min(self.n_samples, max_samples) * (self.sample_bits / 8))
-        for i in range(0, leads_number):
+        # max_samples = int(0xffff / (self.sample_bits / 8))
+        max_samples = int(0xffff / 2)
+        n_samples = min(self.n_samples, max_samples)
+        bytes_to_store = int(n_samples * 2)  # short: 2 bytes
+        for i in range(self.n_leads):
             s[6] += struct.pack('<H', bytes_to_store)
 
         for i in range(self.n_leads):
-            count = 0
             serie = b''
-            for j in range(self.n_samples):
-                val = self.data[i, j]
-                # TODO: How to represent Null values in SCP-ECG?
-                if val is None:
-                    val = 0
-                serie += struct.pack('<h', val)
-                count += 1
-                if count >= max_samples:
-                    break
+            for j in range(n_samples):
+                serie += struct.pack('<h', self.data[i, j])
             s[6] += serie
 
         # Prepare SCP-ECG Record
@@ -149,6 +157,7 @@ class ECGBasic():
                 scp_ecg += scp.pack_section(sect_id, s[sect_id])
         crc = struct.pack('<H', binascii.crc_hqx(scp_ecg, 0xffff))
 
+        # write to .scp file
         with open(filename, "wb") as f:
             f.write(crc + scp_ecg)
 

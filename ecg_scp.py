@@ -91,9 +91,9 @@ SEX_MALE = 1
 SEX_FEMALE = 2
 SEX_UNSPECIFIED = 9
 SEX = {
-    SEX_UNKNOWN: u'Not Known', 
-    SEX_MALE: u'Male', 
-    SEX_FEMALE: u'Female', 
+    SEX_UNKNOWN: u'Not Known',
+    SEX_MALE: u'Male',
+    SEX_FEMALE: u'Female',
     SEX_UNSPECIFIED: u'Unspecified'
 }
 
@@ -131,11 +131,11 @@ AGE_WEEKS = 3
 AGE_DAYS = 4
 AGE_HOURS = 5
 AGE = {
-    AGE_UNSPECIFIED: u'Unspecified', 
-    AGE_YEARS: u'Years', 
-    AGE_MONTHS: u'Months', 
-    AGE_WEEKS: u'Weeks', 
-    AGE_DAYS: u'Days', 
+    AGE_UNSPECIFIED: u'Unspecified',
+    AGE_YEARS: u'Years',
+    AGE_MONTHS: u'Months',
+    AGE_WEEKS: u'Weeks',
+    AGE_DAYS: u'Days',
     AGE_HOURS: u'Hours'
 }
 
@@ -267,13 +267,14 @@ ENCODING = {
 BIMODAL_COMPRESSION_FALSE = 0
 BIMODAL_COMPRESSION_TRUE = 1
 BIMODAL_COMPRESSION = {
-    BIMODAL_COMPRESSION_FALSE: u'Not used', 
+    BIMODAL_COMPRESSION_FALSE: u'Not used',
     BIMODAL_COMPRESSION_TRUE: u'Bimodal'
 }
 
 MEASURE_NOT_COMPUTED = 29999
 MEASURE_LEAD_REJECTED = 29998
 MEASURE_WAVE_NOT_PRESENT = 19999
+
 
 def csv_format(val, none_as_zero=False, num_format=u'%.6f', multiplier=1):
     """ Return the value formatted as string suitable for CSV output """
@@ -285,36 +286,44 @@ def csv_format(val, none_as_zero=False, num_format=u'%.6f', multiplier=1):
     else:
         return num_format % (val * multiplier,)
 
+
 def make_date(d):
     """ Return a 4-bytes SCP-ECG encoded date from a datetime object """
     return struct.pack('<H', d.year) + struct.pack('<B', d.month) + struct.pack('<B', d.day)
+
 
 def make_time(d):
     """ Return a 3 bytes SCP-ECG encoded time from a datetime object """
     return struct.pack('<B', d.hour) + struct.pack('<B', d.minute) + struct.pack('<B', d.second)
 
+
 def make_3bytes_intval_unit(val, unit):
     """ Return a 3 bytes SCP-ECG encoded field with value and unit """
     return struct.pack('<H', val) + struct.pack('<B', unit)
+
 
 def make_asciiz(s):
     """ Return a zero-terminated string """
     return s.encode('utf-8') + b'\0'
 
+
 def make_tag(tag, data):
     """ Return a patient tag for Section #1 """
     return struct.pack('<B', tag) + struct.pack('<H', len(data)) + data
+
 
 def make_pointer_field(sect, length, index):
     """ Return a Section Pointer field (10 bytes) """
     index = 0 if length == 0 else index
     return struct.pack('<H', sect) + struct.pack('<I', length) + struct.pack('<I', index)
 
+
 def make_machine_id(s):
     """ Return an (almos empty) SCP-ECG machine parameter """
     s += u'\0' * 6
     text = s.encode('utf-8')[0:5] + b'\0'
     return (8 * b'\0') + text + (23 * b'\0')
+
 
 def pack_section(sect, data_part):
     """ Return a Section structure prepending CRC and header to data part """
@@ -327,8 +336,10 @@ def pack_section(sect, data_part):
     crc = struct.pack('<H', binascii.crc_hqx(buff, 0xffff))
     return crc + buff
 
+
 def parse_asciiz(data):
     return data.decode('utf-8').split('\0', 1)[0]
+
 
 def parse_age(data):
     age = int.from_bytes(data[0:2], byteorder='little')
@@ -340,6 +351,7 @@ def parse_age(data):
     else:
         return '%d %s' % (age, AGE[unit])
 
+
 def parse_weight(data):
     weight = int.from_bytes(data[0:2], byteorder='little')
     unit = int.from_bytes(data[2:3], byteorder='little')
@@ -349,6 +361,7 @@ def parse_weight(data):
         return 'Not specified'
     else:
         return '%d %s' % (weight, WEIGHT[unit])
+
 
 def parse_date(data):
     """ Convert a date from 4-bytes SCP-ECG format to ISO YYYY-MM-DD format """
@@ -360,6 +373,7 @@ def parse_date(data):
         year, month, day = 0, 0, 0
     return '%04d-%02d-%02d' % (year, month, day)
 
+
 def parse_time(data):
     """ Convert a time from 3-bytes SCP-ECG format to HH:MM:SS format """
     hours = int.from_bytes(data[0:1], byteorder='little')
@@ -370,14 +384,16 @@ def parse_time(data):
         hours, minutes, seconds = 0, 0, 0
     return '%02d:%02d:%02d' % (hours, minutes, seconds)
 
+
 def parse_machine_id(data):
     """ Convert an SCP-ECG machine parameter data into a string """
-    institute_n  = int.from_bytes(data[1:3], byteorder='little')
+    institute_n = int.from_bytes(data[1:3], byteorder='little')
     department_n = int.from_bytes(data[3:5], byteorder='little')
-    device_id    = int.from_bytes(data[5:7], byteorder='little')
-    device_type  = int.from_bytes(data[7:8], byteorder='little')
+    device_id = int.from_bytes(data[5:7], byteorder='little')
+    device_type = int.from_bytes(data[7:8], byteorder='little')
     model = parse_asciiz(data[8:14])
-    return 'Inst. %d, Dept. %d, Dev. %d, Type %d, Model "%s"' % (institute_n, department_n, device_id, device_type, model)
+    return 'Inst. %d, Dept. %d, Dev. %d, Type %d, Model "%s"' % (
+    institute_n, department_n, device_id, device_type, model)
 
 
 def read_section_header(fp, offset):
@@ -404,7 +420,7 @@ def print_section_header(i, h, label=''):
     print(u'==== Section #%d: %s ====' % (i, label))
     print(u'Section CRC:      0x%04X' % (h['crc'],))
     print(u'Section Id:       0x%04X' % (h['id'],))
-    print(u'Section length:   %d'     % (h['length'],))
+    print(u'Section length:   %d' % (h['length'],))
     print(u'Section version:  0x%02X' % (h['version'],))
     print(u'Protocol version: 0x%02X' % (h['protocol'],))
     print(u'Calculated CRC:   0x%04X' % (h['calc_crc'],))
@@ -448,9 +464,11 @@ def read_parameter(fp):
 
 class second_diff():
     """ Reconstruct a sequence from Second Differences """
+
     def __init__(self):
         self.previous_val = None
         self.previous_diff1 = None
+
     def val(self, diff2):
         if self.previous_val == None:
             self.previous_val = diff2
@@ -468,13 +486,14 @@ class second_diff():
 
 class raw_decoder():
     """ Iterator yielding signed two-byte integers from data """
+
     def decode(self, data):
         words = len(data)
         if (words % 2) != 0:
             print(u'WARNING: Data contains an odd number of bytes, shall be even')
             words -= 1
         for i in range(0, words, 2):
-            yield struct.unpack('<h', data[i:i+2])[0]
+            yield struct.unpack('<h', data[i:i + 2])[0]
 
 
 class huffman_decoder():
@@ -484,25 +503,25 @@ class huffman_decoder():
     _8bit = 511
     _16bit = 1023
     default_table = {
-        ( 1, 0b0):            0,
-        ( 3, 0b100):          1,
-        ( 3, 0b101):         -1,
-        ( 4, 0b1100):         2,
-        ( 4, 0b1101):        -2,
-        ( 5, 0b11100):        3,
-        ( 5, 0b11101):       -3,
-        ( 6, 0b111100):       4,
-        ( 6, 0b111101):      -4,
-        ( 7, 0b1111100):      5,
-        ( 7, 0b1111101):     -5,
-        ( 8, 0b11111100):     6,
-        ( 8, 0b11111101):    -6,
-        ( 9, 0b111111100):    7,
-        ( 9, 0b111111101):   -7,
-        (10, 0b1111111100):   8,
-        (10, 0b1111111101):  -8,
-        (10, 0b1111111110):  _8bit,
-        (10, 0b1111111111):  _16bit
+        (1, 0b0): 0,
+        (3, 0b100): 1,
+        (3, 0b101): -1,
+        (4, 0b1100): 2,
+        (4, 0b1101): -2,
+        (5, 0b11100): 3,
+        (5, 0b11101): -3,
+        (6, 0b111100): 4,
+        (6, 0b111101): -4,
+        (7, 0b1111100): 5,
+        (7, 0b1111101): -5,
+        (8, 0b11111100): 6,
+        (8, 0b11111101): -6,
+        (9, 0b111111100): 7,
+        (9, 0b111111101): -7,
+        (10, 0b1111111100): 8,
+        (10, 0b1111111101): -8,
+        (10, 0b1111111110): _8bit,
+        (10, 0b1111111111): _16bit
     }
 
     def decode(self, data):
@@ -518,7 +537,7 @@ class huffman_decoder():
                     orig_bits_buffer += ('1' if (bool(byte & m)) else '0')
                     get_orig_bits -= 1
                     if get_orig_bits == 0:
-                        #print(u'DEBUG: Read orig %dbit: %s' % (len(orig_bits_buffer), orig_bits_buffer))
+                        # print(u'DEBUG: Read orig %dbit: %s' % (len(orig_bits_buffer), orig_bits_buffer))
                         # Pack as unsigned, then unpack as signed.
                         if len(orig_bits_buffer) == 8:
                             orig_val = struct.unpack('<b', struct.pack('<B', int(orig_bits_buffer, 2)))[0]
@@ -538,17 +557,17 @@ class huffman_decoder():
                     if (size, huffman_prefix) in self.default_table:
                         symbol = self.default_table[size, huffman_prefix]
                         if symbol == self._8bit:
-                            #print(u'DEBUG: Found 8 bit value')
+                            # print(u'DEBUG: Found 8 bit value')
                             get_orig_bits = 8
                         elif symbol == self._16bit:
-                            #print(u'DEBUG: Found 16 bit value')
+                            # print(u'DEBUG: Found 16 bit value')
                             get_orig_bits = 16
                         else:
                             yield symbol
                             orig_bits_buffer = ''
                             huffman_prefix = 0
                             size = 0
-        #print(u'DEBUG: Iterator terminated')
+        # print(u'DEBUG: Iterator terminated')
         fmt = '{0:0%db}' % (size,)
         if size > 0:
             print(u'WARNING: Unmatched Huffman prefix = %s' % (fmt.format(huffman_prefix),))
